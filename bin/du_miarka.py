@@ -48,7 +48,7 @@ def main(path_str, non_human_readable=False, size_sorted=False):
                 stderr=subprocess.PIPE,
             )
             if result.returncode != 0:
-                sys.stderr.write(result.stderr)
+                sys.stderr.write(result.stderr.decode("utf-8"))
                 sys.stderr.write("Error running getfattr. Exiting\n")
                 return
             lines = result.stdout.decode("utf-8").splitlines()
@@ -63,7 +63,7 @@ def main(path_str, non_human_readable=False, size_sorted=False):
                     total += int(bytes)
 
     if size_sorted:
-        filesizes.sort(key=lambda x: x[1], reverse=True)
+        filesizes.sort(key=lambda x: x[1], reverse=False)
 
     for filename, bytes in filesizes:
         print_file_size(filename, bytes, non_human_readable)
