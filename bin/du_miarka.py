@@ -2,6 +2,7 @@
 
 import argparse
 import glob
+import os
 import subprocess
 import sys
 
@@ -11,11 +12,18 @@ def sizeof_fmt(num, suffix="B"):
 
     From https://stackoverflow.com/a/1094933/
     """
-    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+    for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
         if abs(num) < 1024.0:
-            return f"{num:3.1f} {unit}{suffix}"
+            return f"{num:3.1f}{unit}{suffix}"
         num /= 1024.0
-    return f"{num:.1f} Yi{suffix}"
+    return f"{num:.1f}Yi{suffix}"
+
+
+def print_file_size(path, bytes, non_human_readable=False):
+    if non_human_readable:
+        print(f"{bytes}\t{path}")
+    else:
+        print(f"{sizeof_fmt(bytes)}\t{path}")
 
 
 def main(path_str, non_human_readable=False):
@@ -30,16 +38,13 @@ def main(path_str, non_human_readable=False):
         if not os.path.isdir(path):
             statinfo = os.stat(path)
             bytes = statinfo.st_size
-            if non_human_readable:
-                print(f"{path} {bytes}")
-            else:
-                print(f"{path} {sizeof_fmt(bytes)}")
         else:  # Directory
             # Requires python 3.5 or higher
             result = subprocess.run(
-                ["getfattr", "-n", "ceph.dir.rbytes", path], stdout=subprocess.PIPE
+                ["getfattr", "-n", "ceph.dir.rbytes", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE
             )
             if result.returncode != 0:
+                sys.stderr.write(result.stderr)
                 sys.stderr.write("Error running getfattr. Exiting\n")
                 return
             lines = result.stdout.decode("utf-8").splitlines()
@@ -50,16 +55,10 @@ def main(path_str, non_human_readable=False):
                 if line.startswith("ceph.dir.rbytes"):
                     bytes = int((line.split("=")[1]).replace('"', ""))
                     bytes_readable = sizeof_fmt(bytes)
-                    if non_human_readable:
-                        print(f"{filename} {bytes}")
-                    else:
-                        print(f"{filename} {bytes_readable}")
+                    print_file_size(filename, bytes, non_human_readable)
                     total += int(bytes)
 
-    if non_human_readable:
-        print(f"Total: {total}")
-    else:
-        print(f"Total: {sizeof_fmt(total)}")
+    print_file_size('Total', total, non_human_readable)
 
 
 if __name__ == "__main__":
