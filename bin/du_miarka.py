@@ -1,15 +1,19 @@
 #!/usr/bin/python3
 
 import argparse
-import pathlib
+import glob
 import subprocess
+import sys
 
 
 def main(path_str, non_human_readable=False):
-    path = pathlib.Path(path_str)
+    paths = glob.glob(path_str)
+    if not paths:
+        sys.stderr.write("No paths found. Exiting")
+        return
     # Requires python 3.5 or higher
     result = subprocess.run(
-        ["getfattr", "-n", "ceph.dir.rbytes", path], stdout=subprocess.PIPE
+        ["getfattr", "-n", "ceph.dir.rbytes", paths], stdout=subprocess.PIPE
     )
     print(result.stdout)
 
