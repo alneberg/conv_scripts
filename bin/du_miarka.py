@@ -13,7 +13,7 @@ def main(path_str, non_human_readable=False):
         return
     # Requires python 3.5 or higher
     result = subprocess.run(
-        ["getfattr", "-n", "ceph.dir.rbytes", paths], stdout=subprocess.PIPE
+        ["getfattr", "-n", "ceph.dir.rbytes"] + paths, stdout=subprocess.PIPE
     )
     print(result.stdout)
 
