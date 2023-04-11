@@ -33,7 +33,7 @@ def main(input_paths, non_human_readable=False, size_sorted=False, depth=0):
     for path in input_paths:
         paths.append(path)
         for depth in range(depth):
-            depth_paths = glob.glob(path + '/*')
+            depth_paths = glob.glob(path + "/*")
             if not depth_paths:
                 break
             paths += depth_paths
@@ -41,7 +41,6 @@ def main(input_paths, non_human_readable=False, size_sorted=False, depth=0):
     total = 0
     filesizes = []
     for path in paths:
-
         # Check if path is not a directory
         if not os.path.isdir(path):
             statinfo = os.stat(path)
@@ -82,7 +81,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="A faster version of `du` for our cluster Miarka, using ceph supplied space consumption."
     )
-    parser.add_argument("paths", nargs='*', help="The path that should be looked into")
+    parser.add_argument("paths", nargs="*", help="The path that should be looked into")
     parser.add_argument(
         "-n",
         "--non-human-readable",
@@ -90,7 +89,12 @@ if __name__ == "__main__":
         help="Print sizes in bytes instead of human readable format (e.g. 1K 234M 2G)",
     )
     parser.add_argument("--sort", action="store_true", help="Sort by size")
-    parser.add_argument("-d", "--depth", deafult="0", help="The number of levels to go down to inside the given directory")
+    parser.add_argument(
+        "-d",
+        "--depth",
+        default="0",
+        help="The number of levels to go down to inside the given directory",
+    )
     args = parser.parse_args()
 
     main(args.path, args.non_human_readable, args.sort, args.depth)
