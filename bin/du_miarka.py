@@ -26,22 +26,26 @@ def print_file_size(path, bytes, non_human_readable=False):
         print(f"{sizeof_fmt(bytes)}\t{path}")
 
 
-def main(path_str, non_human_readable=False):
+def main(path_str, non_human_readable=False, size_sorted=False):
     paths = glob.glob(path_str)
     if not paths:
         sys.stderr.write("No paths found. Exiting\n")
         return
 
     total = 0
+    filesizes = []
     for path in paths:
         # Check if path is not a directory
         if not os.path.isdir(path):
             statinfo = os.stat(path)
             bytes = statinfo.st_size
+            filesizes.append((path, bytes))
         else:  # Directory
             # Requires python 3.5 or higher
             result = subprocess.run(
-                ["getfattr", "-n", "ceph.dir.rbytes", path], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                ["getfattr", "-n", "ceph.dir.rbytes", path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
             )
             if result.returncode != 0:
                 sys.stderr.write(result.stderr)
@@ -54,11 +58,18 @@ def main(path_str, non_human_readable=False):
                     filename = filename.strip()
                 if line.startswith("ceph.dir.rbytes"):
                     bytes = int((line.split("=")[1]).replace('"', ""))
+                    filesizes.append((filename, bytes))
                     bytes_readable = sizeof_fmt(bytes)
-                    print_file_size(filename, bytes, non_human_readable)
                     total += int(bytes)
 
-    print_file_size('Total', total, non_human_readable)
+    if size_sorted:
+        for filename, bytes in filesizes.sort(key=lambda x: x[1], reverse=True):
+            print_file_size(filename, bytes, non_human_readable)
+    else:
+        for filename, bytes in filesizes:
+            print_file_size(filename, bytes, non_human_readable)
+
+    print_file_size("Total", total, non_human_readable)
 
 
 if __name__ == "__main__":
@@ -72,6 +83,7 @@ if __name__ == "__main__":
         action="store_true",
         help="Print sizes in bytes instead of human readable format (e.g. 1K 234M 2G)",
     )
+    parser.add_argument("--sort", action="store_true", help="Sort by size")
 
     args = parser.parse_args()
 
