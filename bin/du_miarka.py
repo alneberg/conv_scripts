@@ -63,11 +63,10 @@ def main(path_str, non_human_readable=False, size_sorted=False):
                     total += int(bytes)
 
     if size_sorted:
-        for filename, bytes in filesizes.sort(key=lambda x: x[1], reverse=True):
-            print_file_size(filename, bytes, non_human_readable)
-    else:
-        for filename, bytes in filesizes:
-            print_file_size(filename, bytes, non_human_readable)
+        filesizes.sort(key=lambda x: x[1], reverse=True)
+
+    for filename, bytes in filesizes:
+        print_file_size(filename, bytes, non_human_readable)
 
     print_file_size("Total", total, non_human_readable)
 
@@ -87,4 +86,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    main(args.path, args.non_human_readable)
+    main(args.path, args.non_human_readable, args.sort)
