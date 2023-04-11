@@ -13,37 +13,48 @@ def sizeof_fmt(num, suffix="B"):
     """
     for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
-            return f"{num:3.1f}{unit}{suffix}"
+            return f"{num:3.1f} {unit}{suffix}"
         num /= 1024.0
-    return f"{num:.1f}Yi{suffix}"
+    return f"{num:.1f} Yi{suffix}"
 
 
 def main(path_str, non_human_readable=False):
     paths = glob.glob(path_str)
     if not paths:
-        sys.stderr.write("No paths found. Exiting")
+        sys.stderr.write("No paths found. Exiting\n")
         return
-    # Requires python 3.5 or higher
-    result = subprocess.run(
-        ["getfattr", "-n", "ceph.dir.rbytes"] + paths, stdout=subprocess.PIPE
-    )
-    if result.returncode != 0:
-        sys.stderr.write("Error running getfattr. Exiting")
-        return
-    lines = result.stdout.decode("utf-8").splitlines()
+
     total = 0
-    for line in lines:
-        if line.startswith("# file:"):
-            filename = line.split(" ")[1]
-            filename = filename.strip()
-        if line.startswith("ceph.dir.rbytes"):
-            bytes = int(line.split("=")[1])
-            bytes_readable = sizeof_fmt(bytes)
+    for path in paths:
+        # Check if path is not a directory
+        if not os.path.isdir(path):
+            statinfo = os.stat(path)
+            bytes = statinfo.st_size
             if non_human_readable:
-                print(f"{filename} {bytes}")
+                print(f"{path} {bytes}")
             else:
-                print(f"{filename} {bytes_readable}")
-            total += int(bytes)
+                print(f"{path} {sizeof_fmt(bytes)}")
+        else:  # Directory
+            # Requires python 3.5 or higher
+            result = subprocess.run(
+                ["getfattr", "-n", "ceph.dir.rbytes", path], stdout=subprocess.PIPE
+            )
+            if result.returncode != 0:
+                sys.stderr.write("Error running getfattr. Exiting\n")
+                return
+            lines = result.stdout.decode("utf-8").splitlines()
+            for line in lines:
+                if line.startswith("# file:"):
+                    filename = line.split(" ")[2]
+                    filename = filename.strip()
+                if line.startswith("ceph.dir.rbytes"):
+                    bytes = int((line.split("=")[1]).replace('"', ""))
+                    bytes_readable = sizeof_fmt(bytes)
+                    if non_human_readable:
+                        print(f"{filename} {bytes}")
+                    else:
+                        print(f"{filename} {bytes_readable}")
+                    total += int(bytes)
 
     if non_human_readable:
         print(f"Total: {total}")
