@@ -6,6 +6,18 @@ import subprocess
 import sys
 
 
+def sizeof_fmt(num, suffix="B"):
+    """Human readable format for file sizes
+
+    From https://stackoverflow.com/a/1094933/
+    """
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+        if abs(num) < 1024.0:
+            return f"{num:3.1f}{unit}{suffix}"
+        num /= 1024.0
+    return f"{num:.1f}Yi{suffix}"
+
+
 def main(path_str, non_human_readable=False):
     paths = glob.glob(path_str)
     if not paths:
@@ -15,7 +27,28 @@ def main(path_str, non_human_readable=False):
     result = subprocess.run(
         ["getfattr", "-n", "ceph.dir.rbytes"] + paths, stdout=subprocess.PIPE
     )
-    print(result.stdout)
+    if result.returncode != 0:
+        sys.stderr.write("Error running getfattr. Exiting")
+        return
+    lines = result.stdout.decode("utf-8").splitlines()
+    total = 0
+    for line in lines:
+        if line.startswith("# file:"):
+            filename = line.split(" ")[1]
+            filename = filename.strip()
+        if line.startswith("ceph.dir.rbytes"):
+            bytes = int(line.split("=")[1])
+            bytes_readable = sizeof_fmt(bytes)
+            if non_human_readable:
+                print(f"{filename} {bytes}")
+            else:
+                print(f"{filename} {bytes_readable}")
+            total += int(bytes)
+
+    if non_human_readable:
+        print(f"Total: {total}")
+    else:
+        print(f"Total: {sizeof_fmt(total)}")
 
 
 if __name__ == "__main__":
