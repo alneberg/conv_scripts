@@ -27,23 +27,25 @@ def print_file_size(path, bytes, non_human_readable=False):
 
 
 def main(input_paths, non_human_readable=False, size_sorted=False, depth=0):
-    paths = glob.glob(path_str)
-
     paths = []
+    new_paths = []
     for path in input_paths:
         paths.append(path)
         for depth in range(depth):
-            depth_paths = glob.glob(path + "/*")
+            path += '/*'
+            depth_paths = glob.glob(path)
             if not depth_paths:
                 break
             paths += depth_paths
 
-    total = 0
     filesizes = []
     for path in paths:
         # Check if path is not a directory
         if not os.path.isdir(path):
-            statinfo = os.stat(path)
+            try:
+                statinfo = os.stat(path)
+            except OSError as e:
+                print(str(e), file=sys.stderr)
             bytes = statinfo.st_size
             filesizes.append((path, bytes))
         else:  # Directory
@@ -54,8 +56,7 @@ def main(input_paths, non_human_readable=False, size_sorted=False, depth=0):
                 stderr=subprocess.PIPE,
             )
             if result.returncode != 0:
-                sys.stderr.write(result.stderr.decode("utf-8"))
-                sys.stderr.write("Error running getfattr. Exiting\n")
+                print(result.stderr.decode("utf-8"), file=sys.stderr)
                 continue
             lines = result.stdout.decode("utf-8").splitlines()
             for line in lines:
@@ -66,15 +67,12 @@ def main(input_paths, non_human_readable=False, size_sorted=False, depth=0):
                     bytes = int((line.split("=")[1]).replace('"', ""))
                     filesizes.append((filename, bytes))
                     bytes_readable = sizeof_fmt(bytes)
-                    total += int(bytes)
 
     if size_sorted:
         filesizes.sort(key=lambda x: x[1], reverse=False)
 
     for filename, bytes in filesizes:
         print_file_size(filename, bytes, non_human_readable)
-
-    print_file_size("Total", total, non_human_readable)
 
 
 if __name__ == "__main__":
@@ -92,9 +90,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "-d",
         "--depth",
-        default="0",
+        default=0,
+        type=int,
         help="The number of levels to go down to inside the given directory",
     )
     args = parser.parse_args()
 
-    main(args.path, args.non_human_readable, args.sort, args.depth)
+    main(args.paths, args.non_human_readable, args.sort, args.depth)
